@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { SpeechPosition, SpeechStatus } from '../hooks/useSpeech'
 import type { OcrResult } from '../lib/ocr'
 import { FONT_SIZE_MAX, FONT_SIZE_MIN, FONT_SIZE_STEP, readerStyleVars, type Settings } from '../lib/settings'
+import { fitLines } from '../lib/fit'
 import { Icon } from './Icon'
 
 export type RecognitionStatus = 'idle' | 'recognizing' | 'done' | 'error'
@@ -33,6 +34,20 @@ export function Reader(props: ReaderProps) {
   const [mode, setMode] = useState<Mode>('text')
   const [zoom, setZoom] = useState(1)
   const hasText = status === 'done' && result !== null
+
+  // Shrink lines whose longest word cannot fit the width, and redo it when the
+  // width, the type settings, or the webfont change.
+  const surfaceRef = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    const surface = surfaceRef.current
+    if (!surface || !hasText) return
+    const run = () => fitLines(surface, settings.fontSize)
+    run()
+    const observer = new ResizeObserver(run)
+    observer.observe(surface)
+    document.fonts?.ready.then(run)
+    return () => observer.disconnect()
+  }, [hasText, result, settings.fontSize, settings.fontId, settings.letterSpacing, settings.bold])
 
   const activeLine = useRef<HTMLParagraphElement>(null)
   useEffect(() => {
@@ -173,7 +188,7 @@ export function Reader(props: ReaderProps) {
           </div>
         </div>
       ) : (
-        <article className="surface" style={surfaceStyle} aria-live="polite" aria-busy={status === 'recognizing'}>
+        <article ref={surfaceRef} className="surface" style={surfaceStyle} aria-live="polite" aria-busy={status === 'recognizing'}>
           {status === 'idle' && (
             <div className="surface__empty">
               <p className="surface__lede">Nothing captured yet.</p>

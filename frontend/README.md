@@ -41,7 +41,7 @@ src/
 ## Accessibility notes
 
 - Default reader face is Atkinson Hyperlegible, designed for low-vision readers; Lexend, the system sans, and a serif are also offered.
-- Six reader colour themes, including yellow-on-black and black-on-yellow, with the app chrome switching to match.
+- Six colour themes, including yellow-on-black and black-on-yellow. The chosen theme, typeface, weight, and spacing apply to the entire interface, not only the reader, and controls scale up with the reading size (capped at 1.5×).
 - Every control is at least 48px tall, has a visible text label or an accessible name, and a high-visibility focus ring.
 - Status changes (recognising, results, errors) are announced through live regions.
 - The Camera/Text switch sits at the bottom of the screen on phones so it is within thumb reach.

@@ -10,11 +10,18 @@ body,
   height: 100%;
 }
 
+/* All rem units scale with the reading size. */
+html {
+  font-size: calc(16px * var(--ui-scale, 1));
+}
+
 body {
   margin: 0;
   font-family: var(--font-ui);
-  font-size: 18px;
-  line-height: 1.5;
+  font-size: 1.125rem;
+  font-weight: var(--reader-weight, 400);
+  line-height: var(--reader-leading, 1.5);
+  letter-spacing: var(--reader-tracking, 0);
   color: var(--ink);
   background: var(--ground);
   -webkit-font-smoothing: antialiased;

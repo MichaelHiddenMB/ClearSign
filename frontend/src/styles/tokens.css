@@ -16,7 +16,8 @@
 
   --font-ui: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --radius: 6px;
-  --control: 56px;
+  --control: 3.5rem;
+  --ui-scale: 1;
   --gutter: 16px;
 }
 

@@ -13,17 +13,21 @@ export interface ReaderTheme {
   bg: string
   /** Background used to mark the word currently being read aloud. */
   mark: string
-  /** Which app chrome palette suits this reading surface. */
+  /** Colour for primary actions, the wordmark and focus rings on this surface. */
+  accent: string
+  /** Text colour on top of the accent. */
+  accentInk: string
+  /** Whether native controls should render light or dark. */
   chrome: 'light' | 'dark'
 }
 
 export const THEMES: ReaderTheme[] = [
-  { id: 'black-on-white', label: 'Black on white', fg: '#000000', bg: '#FFFFFF', mark: '#FFE45C', chrome: 'light' },
-  { id: 'white-on-black', label: 'White on black', fg: '#FFFFFF', bg: '#000000', mark: '#4F4A00', chrome: 'dark' },
-  { id: 'yellow-on-black', label: 'Yellow on black', fg: '#FFE45C', bg: '#000000', mark: '#3F3A1A', chrome: 'dark' },
-  { id: 'black-on-yellow', label: 'Black on yellow', fg: '#000000', bg: '#FFE45C', mark: '#FFFFFF', chrome: 'light' },
-  { id: 'navy-on-ivory', label: 'Navy on ivory', fg: '#14213D', bg: '#FAF6EA', mark: '#F2D66B', chrome: 'light' },
-  { id: 'white-on-navy', label: 'White on navy', fg: '#FFFFFF', bg: '#14213D', mark: '#2F4A85', chrome: 'dark' },
+  { id: 'black-on-white', label: 'Black on white', fg: '#000000', bg: '#FFFFFF', mark: '#FFE45C', accent: '#1A47B8', accentInk: '#FFFFFF', chrome: 'light' },
+  { id: 'white-on-black', label: 'White on black', fg: '#FFFFFF', bg: '#000000', mark: '#4F4A00', accent: '#FFFFFF', accentInk: '#000000', chrome: 'dark' },
+  { id: 'yellow-on-black', label: 'Yellow on black', fg: '#FFE45C', bg: '#000000', mark: '#3F3A1A', accent: '#FFE45C', accentInk: '#000000', chrome: 'dark' },
+  { id: 'black-on-yellow', label: 'Black on yellow', fg: '#000000', bg: '#FFE45C', mark: '#FFFFFF', accent: '#000000', accentInk: '#FFE45C', chrome: 'light' },
+  { id: 'navy-on-ivory', label: 'Navy on ivory', fg: '#14213D', bg: '#FAF6EA', mark: '#F2D66B', accent: '#14213D', accentInk: '#FAF6EA', chrome: 'light' },
+  { id: 'white-on-navy', label: 'White on navy', fg: '#FFFFFF', bg: '#14213D', mark: '#2F4A85', accent: '#FFFFFF', accentInk: '#14213D', chrome: 'dark' },
 ]
 
 export type FontId = 'hyperlegible' | 'lexend' | 'system' | 'serif'
@@ -129,6 +133,33 @@ export function readerStyleVars(settings: Settings): Record<`--${string}`, strin
     '--reader-leading': LINE_SPACING[settings.lineSpacing],
     '--reader-tracking': `${settings.letterSpacing}em`,
     '--reader-weight': settings.bold ? 700 : 400,
+  }
+}
+
+/**
+ * CSS custom properties for the whole interface: chrome colours mixed from the
+ * reading theme, the reading typeface, and a scale factor so controls and UI
+ * text grow with the reading size (1× at the default size, capped at 1.5×).
+ */
+export function interfaceStyleVars(settings: Settings): Record<`--${string}`, string> {
+  const theme = themeById(settings.themeId)
+  const font = fontById(settings.fontId)
+  const mix = (fgPct: number) => `color-mix(in srgb, ${theme.fg} ${fgPct}%, ${theme.bg})`
+  const scale = clamp(settings.fontSize / DEFAULT_SETTINGS.fontSize, 1, 1.5)
+  return {
+    '--ink': theme.fg,
+    '--ink-2': mix(78),
+    '--ground': theme.bg,
+    '--ground-2': mix(7),
+    '--ground-3': mix(14),
+    '--line': mix(40),
+    '--line-strong': theme.fg,
+    '--accent': theme.accent,
+    '--accent-ink': theme.accentInk,
+    '--focus': theme.accent,
+    '--focus-halo': theme.bg,
+    '--font-ui': font.stack,
+    '--ui-scale': scale.toFixed(3),
   }
 }
 
