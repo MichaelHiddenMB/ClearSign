@@ -5,7 +5,7 @@ ClearSign is an accessibility web app for people with low vision. Point a phone 
 ## How it works
 
 1. The React client captures a frame from the browser camera (or a photo from the library) and posts it to the API.
-2. The FastAPI service preprocesses the frame with OpenCV (grayscale, adaptive thresholding, deskewing) and runs Tesseract OCR, discarding words below a confidence threshold.
+2. The FastAPI service locates the text with a first Tesseract pass, then preprocesses that region with OpenCV (perspective correction, rescaling, denoising, adaptive thresholding, deskewing) and reads it with Tesseract, merging the reads of several candidate images and discarding words below a confidence threshold. The pipeline is tuned with a benchmark of real and synthetic sign photos; see `backend/README.md`.
 3. The client renders the recognised lines in the reader, where text size, typeface, line and letter spacing, weight, and colour theme are all adjustable, and the Web Speech API reads the lines aloud with the current word highlighted.
 
 ## Repository layout
@@ -24,6 +24,7 @@ You need Node 20+, Python 3.12, and Tesseract 5 (`brew install tesseract` on mac
 cd backend
 python3.12 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
+sh scripts/fetch_tessdata.sh          # the more accurate tessdata_best model (15 MB)
 .venv/bin/uvicorn app.main:app --reload --port 8000
 
 # Terminal 2: client on :5173

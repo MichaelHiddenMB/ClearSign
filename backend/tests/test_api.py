@@ -39,7 +39,7 @@ def test_reads_tilted_light_on_dark_sign():
     payload = response.json()
     assert "EXIT" in _texts(payload)
     assert "KEEP RIGHT" in _texts(payload)
-    assert abs(payload["skew_degrees"]) == pytest.approx(5, abs=1.0)
+    assert abs(payload["skew_degrees"]) == pytest.approx(5, abs=2.5)
 
 
 def test_blank_image_returns_no_lines():

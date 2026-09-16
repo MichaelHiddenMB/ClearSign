@@ -17,3 +17,4 @@ class HealthResponse(BaseModel):
     status: str
     tesseract_version: str
     language: str
+    model: str

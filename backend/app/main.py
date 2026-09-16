@@ -6,14 +6,14 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .ocr import recognize
-from .preprocess import ImageDecodeError, background_is_dark, decode_image, preprocess
+from .pipeline import run
+from .preprocess import ImageDecodeError, decode_image
 from .schemas import HealthResponse, Line, OcrResponse
 
 app = FastAPI(
     title="ClearSign OCR",
     description="Preprocesses a photo of signage with OpenCV and extracts its text with Tesseract.",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 app.add_middleware(
@@ -30,6 +30,7 @@ def health() -> HealthResponse:
         status="ok",
         tesseract_version=str(pytesseract.get_tesseract_version()),
         language=settings.language,
+        model=settings.model_description,
     )
 
 
@@ -49,39 +50,13 @@ async def ocr(image: UploadFile = File(...)) -> OcrResponse:
         raise HTTPException(status_code=400, detail=str(err)) from err
     elapsed_ms = int((time.perf_counter() - started) * 1000)
 
-    prepared, recognition = result
     return OcrResponse(
-        lines=[Line(text=l.text, confidence=l.confidence) for l in recognition.lines],
-        dropped_words=recognition.dropped_words,
+        lines=[Line(text=l.text, confidence=l.confidence) for l in result.recognition.lines],
+        dropped_words=result.recognition.dropped_words,
         processing_ms=elapsed_ms,
-        skew_degrees=prepared.skew_degrees,
+        skew_degrees=result.prepared.skew_degrees,
     )
 
 
 def _recognise_bytes(data: bytes):
-    bgr = decode_image(data)
-    prepared = preprocess(bgr)
-    recognition = _recognise(prepared)
-    if not recognition.lines:
-        # A dark sign in a bright scene (or the reverse) can fool the polarity
-        # guess; the opposite polarity is a cheap second chance.
-        flipped = preprocess(bgr, invert=not background_is_dark(_gray(bgr)))
-        flipped_recognition = _recognise(flipped)
-        if flipped_recognition.lines:
-            return flipped, flipped_recognition
-    return prepared, recognition
-
-
-def _recognise(prepared):
-    return recognize(
-        prepared.binary,
-        min_confidence=settings.min_confidence,
-        language=settings.language,
-        psm=settings.psm,
-    )
-
-
-def _gray(bgr):
-    import cv2
-
-    return cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+    return run(decode_image(data), settings.pipeline)
