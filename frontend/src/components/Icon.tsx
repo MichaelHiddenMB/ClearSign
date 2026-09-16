@@ -13,6 +13,7 @@ export type IconName =
   | 'image'
   | 'zoom-in'
   | 'zoom-out'
+  | 'chevron-down'
 
 const PATHS: Record<IconName, string> = {
   camera: 'M4 8h3l2-3h6l2 3h3v11H4z M12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
@@ -29,6 +30,7 @@ const PATHS: Record<IconName, string> = {
   image: 'M4 5h16v14H4z M4 15l5-5 4 4 3-3 4 4 M15 9.5a1 1 0 1 0 0-.1',
   'zoom-in': 'M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12z M14.5 14.5L20 20 M10 7v6 M7 10h6',
   'zoom-out': 'M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12z M14.5 14.5L20 20 M7 10h6',
+  'chevron-down': 'M6 9l6 6 6-6',
 }
 
 interface IconProps {

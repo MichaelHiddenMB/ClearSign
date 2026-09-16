@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import {
-  FONTS,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
   FONT_SIZE_STEP,
@@ -9,6 +8,7 @@ import {
   type LineSpacing,
   type Settings,
 } from '../lib/settings'
+import { FontSelect } from './FontSelect'
 import { Icon } from './Icon'
 
 interface SettingsPanelProps {
@@ -91,22 +91,7 @@ export function SettingsPanel({ open, onClose, settings, onChange, voices, speec
 
           <div className="field">
             <span className="field__label" id="font-label">Typeface</span>
-            <div className="fonts" role="radiogroup" aria-labelledby="font-label">
-              {FONTS.map((f) => (
-                <label key={f.id} className="font-option" style={{ fontFamily: f.stack }}>
-                  <input
-                    type="radio"
-                    name="font"
-                    id={`font-${f.id}`}
-                    value={f.id}
-                    checked={settings.fontId === f.id}
-                    onChange={() => onChange({ fontId: f.id })}
-                  />
-                  <span className="font-option__name">{f.label}</span>
-                  <span className="font-option__hint">{f.hint}</span>
-                </label>
-              ))}
-            </div>
+            <FontSelect labelId="font-label" value={settings.fontId} onChange={(fontId) => onChange({ fontId })} />
           </div>
 
           <div className="field">
