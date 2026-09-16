@@ -116,6 +116,22 @@ export function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Number.isFinite(n) ? n : min))
 }
 
+/** CSS custom properties that style any reading surface from the current settings. */
+export function readerStyleVars(settings: Settings): Record<`--${string}`, string | number> {
+  const theme = themeById(settings.themeId)
+  const font = fontById(settings.fontId)
+  return {
+    '--reader-fg': theme.fg,
+    '--reader-bg': theme.bg,
+    '--reader-mark': theme.mark,
+    '--reader-size': `${settings.fontSize}px`,
+    '--reader-font': font.stack,
+    '--reader-leading': LINE_SPACING[settings.lineSpacing],
+    '--reader-tracking': `${settings.letterSpacing}em`,
+    '--reader-weight': settings.bold ? 700 : 400,
+  }
+}
+
 export function themeById(id: ThemeId): ReaderTheme {
   return THEMES.find((t) => t.id === id) ?? THEMES[0]
 }

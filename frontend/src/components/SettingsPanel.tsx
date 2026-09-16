@@ -1,5 +1,14 @@
 import { useEffect, useRef } from 'react'
-import { FONTS, FONT_SIZE_MAX, FONT_SIZE_MIN, FONT_SIZE_STEP, THEMES, type LineSpacing, type Settings } from '../lib/settings'
+import {
+  FONTS,
+  FONT_SIZE_MAX,
+  FONT_SIZE_MIN,
+  FONT_SIZE_STEP,
+  THEMES,
+  readerStyleVars,
+  type LineSpacing,
+  type Settings,
+} from '../lib/settings'
 import { Icon } from './Icon'
 
 interface SettingsPanelProps {
@@ -37,6 +46,10 @@ export function SettingsPanel({ open, onClose, settings, onChange, voices, speec
             <Icon name="close" />
           </button>
         </header>
+
+        <div className="preview" style={readerStyleVars(settings) as React.CSSProperties} aria-label="Preview of the current settings">
+          <p>Platform 2. Trains to Downtown, next departure 4:12 PM.</p>
+        </div>
 
         <fieldset className="panel__section">
           <legend>Colours</legend>

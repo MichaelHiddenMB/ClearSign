@@ -277,7 +277,8 @@
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: calc(var(--reader-size) * 0.35);
+  /* Space between sign lines grows with the chosen line spacing. */
+  gap: calc(var(--reader-size) * (var(--reader-leading) - 0.8));
   padding-block: 32px;
   padding-inline: var(--gutter);
   background: var(--reader-bg);
@@ -381,6 +382,28 @@
 }
 
 /* ---------- Settings panel ---------- */
+
+.preview {
+  position: sticky;
+  top: 74px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--preview-size) * (var(--reader-leading) - 0.8));
+  padding: 16px 24px;
+  border-bottom: 2px solid var(--line-strong);
+  background: var(--reader-bg);
+  color: var(--reader-fg);
+  font-family: var(--reader-font);
+  font-size: var(--preview-size);
+  font-weight: var(--reader-weight);
+  line-height: var(--reader-leading);
+  letter-spacing: var(--reader-tracking);
+  --preview-size: min(var(--reader-size), 24px);
+}
+.preview p {
+  overflow-wrap: anywhere;
+}
 
 .panel {
   width: min(560px, 100% - 2 * var(--gutter));

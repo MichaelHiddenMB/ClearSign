@@ -1,15 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SpeechPosition, SpeechStatus } from '../hooks/useSpeech'
 import type { OcrResult } from '../lib/ocr'
-import {
-  FONT_SIZE_MAX,
-  FONT_SIZE_MIN,
-  FONT_SIZE_STEP,
-  LINE_SPACING,
-  fontById,
-  themeById,
-  type Settings,
-} from '../lib/settings'
+import { FONT_SIZE_MAX, FONT_SIZE_MIN, FONT_SIZE_STEP, readerStyleVars, type Settings } from '../lib/settings'
 import { Icon } from './Icon'
 
 export type RecognitionStatus = 'idle' | 'recognizing' | 'done' | 'error'
@@ -40,8 +32,6 @@ export function Reader(props: ReaderProps) {
 
   const [mode, setMode] = useState<Mode>('text')
   const [zoom, setZoom] = useState(1)
-  const theme = themeById(settings.themeId)
-  const font = fontById(settings.fontId)
   const hasText = status === 'done' && result !== null
 
   const activeLine = useRef<HTMLParagraphElement>(null)
@@ -62,16 +52,7 @@ export function Reader(props: ReaderProps) {
     onSettingsChange({ fontSize: next })
   }
 
-  const surfaceStyle = {
-    '--reader-fg': theme.fg,
-    '--reader-bg': theme.bg,
-    '--reader-mark': theme.mark,
-    '--reader-size': `${settings.fontSize}px`,
-    '--reader-font': font.stack,
-    '--reader-leading': LINE_SPACING[settings.lineSpacing],
-    '--reader-tracking': `${settings.letterSpacing}em`,
-    '--reader-weight': settings.bold ? 700 : 400,
-  } as React.CSSProperties
+  const surfaceStyle = readerStyleVars(settings) as React.CSSProperties
 
   return (
     <section className="reader" aria-labelledby="reader-heading">
