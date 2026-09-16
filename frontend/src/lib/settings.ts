@@ -30,19 +30,84 @@ export const THEMES: ReaderTheme[] = [
   { id: 'white-on-navy', label: 'White on navy', fg: '#FFFFFF', bg: '#14213D', mark: '#2F4A85', accent: '#FFFFFF', accentInk: '#14213D', chrome: 'dark' },
 ]
 
-export type FontId = 'hyperlegible' | 'lexend' | 'system' | 'serif'
+export type FontId =
+  | 'hyperlegible'
+  | 'lexend'
+  | 'opendyslexic'
+  | 'andika'
+  | 'inclusive-sans'
+  | 'verdana'
+  | 'comic'
+  | 'system'
+  | 'serif'
 
 export interface ReaderFont {
   id: FontId
   label: string
+  /** One line on who the face was designed for, shown in the picker. */
+  hint: string
   stack: string
 }
 
+/**
+ * Faces bundled with the app (via @fontsource) are always available; the
+ * others use whatever the device has, with a bundled or generic fallback.
+ */
 export const FONTS: ReaderFont[] = [
-  { id: 'hyperlegible', label: 'Atkinson Hyperlegible', stack: '"Atkinson Hyperlegible", system-ui, sans-serif' },
-  { id: 'lexend', label: 'Lexend', stack: 'Lexend, system-ui, sans-serif' },
-  { id: 'system', label: 'System sans-serif', stack: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' },
-  { id: 'serif', label: 'Serif', stack: 'Georgia, "Times New Roman", serif' },
+  {
+    id: 'hyperlegible',
+    label: 'Atkinson Hyperlegible',
+    hint: 'Made for low vision. Letters that look alike, such as I, l and 1, are easy to tell apart.',
+    stack: '"Atkinson Hyperlegible", system-ui, sans-serif',
+  },
+  {
+    id: 'lexend',
+    label: 'Lexend',
+    hint: 'Wide letters and generous spacing, designed to make reading faster and less tiring.',
+    stack: 'Lexend, system-ui, sans-serif',
+  },
+  {
+    id: 'opendyslexic',
+    label: 'OpenDyslexic',
+    hint: 'Heavy bottoms on each letter help stop letters flipping or swapping for dyslexic readers.',
+    stack: 'OpenDyslexic, system-ui, sans-serif',
+  },
+  {
+    id: 'andika',
+    label: 'Andika',
+    hint: 'Simple, unambiguous letter shapes made for new and struggling readers.',
+    stack: 'Andika, system-ui, sans-serif',
+  },
+  {
+    id: 'inclusive-sans',
+    label: 'Inclusive Sans',
+    hint: 'Open, evenly spaced shapes that stay clear at small sizes and on screens.',
+    stack: '"Inclusive Sans", system-ui, sans-serif',
+  },
+  {
+    id: 'verdana',
+    label: 'Verdana',
+    hint: 'Wide letters with a tall x-height, often recommended in low-vision guidelines.',
+    stack: 'Verdana, "DejaVu Sans", Geneva, sans-serif',
+  },
+  {
+    id: 'comic',
+    label: 'Comic Sans',
+    hint: 'Handwriting-like shapes that many dyslexic readers find easier to follow.',
+    stack: '"Comic Sans MS", "Comic Neue", sans-serif',
+  },
+  {
+    id: 'system',
+    label: 'System sans-serif',
+    hint: 'The typeface your device already uses everywhere.',
+    stack: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  },
+  {
+    id: 'serif',
+    label: 'Serif',
+    hint: 'Georgia or Times, for readers who prefer print-style letters.',
+    stack: 'Georgia, "Times New Roman", serif',
+  },
 ]
 
 export type LineSpacing = 'compact' | 'normal' | 'loose'

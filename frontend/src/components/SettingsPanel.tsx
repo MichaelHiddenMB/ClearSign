@@ -90,14 +90,23 @@ export function SettingsPanel({ open, onClose, settings, onChange, voices, speec
           </div>
 
           <div className="field">
-            <label htmlFor="font-family">Typeface</label>
-            <select id="font-family" value={settings.fontId} onChange={(e) => onChange({ fontId: e.target.value as Settings['fontId'] })}>
+            <span className="field__label" id="font-label">Typeface</span>
+            <div className="fonts" role="radiogroup" aria-labelledby="font-label">
               {FONTS.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label}
-                </option>
+                <label key={f.id} className="font-option" style={{ fontFamily: f.stack }}>
+                  <input
+                    type="radio"
+                    name="font"
+                    id={`font-${f.id}`}
+                    value={f.id}
+                    checked={settings.fontId === f.id}
+                    onChange={() => onChange({ fontId: f.id })}
+                  />
+                  <span className="font-option__name">{f.label}</span>
+                  <span className="font-option__hint">{f.hint}</span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
 
           <div className="field">

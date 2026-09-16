@@ -40,7 +40,7 @@ src/
 
 ## Accessibility notes
 
-- Default reader face is Atkinson Hyperlegible, designed for low-vision readers; Lexend, the system sans, and a serif are also offered.
+- Nine typefaces, each shown in its own face in the picker with a note on who it helps: Atkinson Hyperlegible (default, low vision), Lexend, OpenDyslexic, Andika, Inclusive Sans, Verdana, Comic Sans (falls back to the bundled Comic Neue), the system sans, and a serif. The six non-system faces are bundled through `@fontsource`, so they work offline.
 - Six colour themes, including yellow-on-black and black-on-yellow. The chosen theme, typeface, weight, and spacing apply to the entire interface, not only the reader, and controls scale up with the reading size (capped at 1.5×).
 - Every control is at least 48px tall, has a visible text label or an accessible name, and a high-visibility focus ring.
 - Status changes (recognising, results, errors) are announced through live regions.

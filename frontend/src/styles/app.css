@@ -509,6 +509,48 @@
   font-weight: 700;
 }
 
+.fonts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.font-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+.font-option input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.font-option:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.font-option:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.font-option__name {
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+.font-option__hint {
+  font-size: 1rem;
+  color: var(--ink-2);
+}
+
 .field {
   display: flex;
   flex-direction: column;
