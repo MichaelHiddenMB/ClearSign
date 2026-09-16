@@ -1,8 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { Capture } from '../hooks/useCaptures'
 import type { SpeechPosition, SpeechStatus } from '../hooks/useSpeech'
 import type { OcrResult } from '../lib/ocr'
 import { FONT_SIZE_MAX, FONT_SIZE_MIN, FONT_SIZE_STEP, readerStyleVars, type Settings } from '../lib/settings'
 import { fitLines } from '../lib/fit'
+import { panelId, tabId } from '../lib/captureIds'
+import { CaptureTabs } from './CaptureTabs'
 import { Icon } from './Icon'
 
 export type RecognitionStatus = 'idle' | 'recognizing' | 'done' | 'error'
@@ -10,6 +13,10 @@ export type RecognitionStatus = 'idle' | 'recognizing' | 'done' | 'error'
 interface ReaderProps {
   settings: Settings
   onSettingsChange: (patch: Partial<Settings>) => void
+  captures: Capture[]
+  activeId: number | null
+  onSelectCapture: (id: number) => void
+  onCloseCapture: (id: number) => void
   status: RecognitionStatus
   errorMessage: string | null
   result: OcrResult | null
@@ -29,6 +36,7 @@ const ZOOM_LEVELS = [1, 1.5, 2, 3, 4]
 
 export function Reader(props: ReaderProps) {
   const { settings, onSettingsChange, status, errorMessage, result, imageUrl } = props
+  const { captures, activeId, onSelectCapture, onCloseCapture } = props
   const { speechSupported, speechStatus, speechPosition, onSpeak, onPause, onResume, onStop, onRetake } = props
 
   const [mode, setMode] = useState<Mode>('text')
@@ -37,7 +45,7 @@ export function Reader(props: ReaderProps) {
 
   // Shrink lines whose longest word cannot fit the width, and redo it when the
   // width, the type settings, or the webfont change.
-  const surfaceRef = useRef<HTMLElement>(null)
+  const surfaceRef = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     const surface = surfaceRef.current
     if (!surface || !hasText) return
@@ -156,6 +164,10 @@ export function Reader(props: ReaderProps) {
             </button>
           </div>
         )}
+
+        {captures.length > 0 && (
+          <CaptureTabs captures={captures} activeId={activeId} onSelect={onSelectCapture} onClose={onCloseCapture} />
+        )}
       </div>
 
       {mode === 'photo' && imageUrl ? (
@@ -188,13 +200,20 @@ export function Reader(props: ReaderProps) {
           </div>
         </div>
       ) : (
-        <article ref={surfaceRef} className="surface" style={surfaceStyle} aria-live="polite" aria-busy={status === 'recognizing'}>
+        <div
+          ref={surfaceRef}
+          className="surface"
+          style={surfaceStyle}
+          aria-live="polite"
+          aria-busy={status === 'recognizing'}
+          {...(activeId !== null ? { role: 'tabpanel', id: panelId(activeId), 'aria-labelledby': tabId(activeId) } : {})}
+        >
           {status === 'idle' && (
             <div className="surface__empty">
               <p className="surface__lede">Nothing captured yet.</p>
               <p>
                 Point the camera at a sign, menu, or label and press <strong>Capture</strong>. The text will appear here,
-                enlarged and in your chosen colours.
+                enlarged and in your chosen colours. Each capture gets its own tab, so earlier signs stay a tap away.
               </p>
             </div>
           )}
@@ -242,7 +261,7 @@ export function Reader(props: ReaderProps) {
               </footer>
             </>
           )}
-        </article>
+        </div>
       )}
     </section>
   )

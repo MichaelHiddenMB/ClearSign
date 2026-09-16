@@ -283,6 +283,70 @@
   color: var(--ink-2);
 }
 
+/* ---------- Capture tabs ---------- */
+
+.tabs {
+  flex: 1 1 100%;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+
+.tab {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 3rem;
+  max-width: 20rem;
+  padding: 0 0 0 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ground);
+  color: var(--ink-2);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tab[aria-selected='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--ground);
+}
+.tab__index {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+.tab__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The close affordance is part of the tab: a tap on it closes, Delete closes from the keyboard. */
+.tab__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: 3rem;
+  margin-left: 4px;
+  border-left: 2px solid var(--line);
+  color: inherit;
+}
+.tab[aria-selected='true'] .tab__close {
+  border-left-color: var(--ground-3);
+}
+.tab__close:hover {
+  background: var(--ground-2);
+  color: var(--ink);
+}
+.tab:focus-visible {
+  outline-offset: -4px;
+  box-shadow: none;
+}
+
 .surface {
   flex: 1 1 auto;
   display: flex;

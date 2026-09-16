@@ -1,55 +1,40 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Reader, type RecognitionStatus } from './components/Reader'
+import { useCallback, useState } from 'react'
+import { Reader } from './components/Reader'
 import { SettingsPanel } from './components/SettingsPanel'
 import { TopBar, type View } from './components/TopBar'
 import { Viewfinder } from './components/Viewfinder'
 import { useCamera } from './hooks/useCamera'
+import { useCaptures } from './hooks/useCaptures'
 import { useSettings } from './hooks/useSettings'
 import { useSpeech } from './hooks/useSpeech'
 import { grabFrame } from './lib/capture'
-import { OcrError, recognizeText, type OcrResult } from './lib/ocr'
+import { OcrError, recognizeText } from './lib/ocr'
 
 export default function App() {
   const { settings, update } = useSettings()
   const camera = useCamera()
   const speech = useSpeech()
+  const captures = useCaptures()
 
   const [view, setView] = useState<View>('capture')
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [status, setStatus] = useState<RecognitionStatus>('idle')
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [result, setResult] = useState<OcrResult | null>(null)
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
-
-  // Release the previous object URL whenever a new frame replaces it.
-  useEffect(() => () => { if (imageUrl) URL.revokeObjectURL(imageUrl) }, [imageUrl])
 
   const recognize = useCallback(
     async (image: Blob) => {
-      abortRef.current?.abort()
-      const controller = new AbortController()
-      abortRef.current = controller
-
       speech.stop()
-      setImageUrl(URL.createObjectURL(image))
-      setResult(null)
-      setErrorMessage(null)
-      setStatus('recognizing')
+      const id = captures.add(image)
       setView('read')
-
       try {
-        const next = await recognizeText(image, controller.signal)
-        if (controller.signal.aborted) return
-        setResult(next)
-        setStatus('done')
+        const result = await recognizeText(image)
+        captures.update(id, { status: 'done', result })
       } catch (err) {
-        if (controller.signal.aborted) return
-        setErrorMessage(err instanceof OcrError ? err.message : 'Something went wrong while reading the image. Try again.')
-        setStatus('error')
+        captures.update(id, {
+          status: 'error',
+          errorMessage: err instanceof OcrError ? err.message : 'Something went wrong while reading the image. Try again.',
+        })
       }
     },
-    [speech],
+    [captures, speech],
   )
 
   const capture = async () => {
@@ -59,34 +44,48 @@ export default function App() {
       const frame = await grabFrame(video)
       await recognize(frame)
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Could not capture a frame.')
-      setStatus('error')
+      const id = captures.add(new Blob())
+      captures.update(id, { status: 'error', errorMessage: err instanceof Error ? err.message : 'Could not capture a frame.' })
       setView('read')
     }
   }
 
-  const retake = useCallback(() => {
-    abortRef.current?.abort()
+  // "Capture another" keeps the current text in its tab and returns to the camera.
+  const captureAnother = useCallback(() => {
     speech.stop()
-    setStatus('idle')
-    setResult(null)
-    setErrorMessage(null)
     setView('capture')
   }, [speech])
 
+  const selectCapture = useCallback(
+    (id: number) => {
+      speech.stop()
+      captures.select(id)
+    },
+    [captures, speech],
+  )
+
+  const closeCapture = useCallback(
+    (id: number) => {
+      if (id === captures.activeId) speech.stop()
+      captures.remove(id)
+    },
+    [captures, speech],
+  )
+
+  const active = captures.active
   const readAloud = useCallback(() => {
-    if (!result) return
+    if (!active?.result) return
     speech.speak(
-      result.lines.map((l) => l.text),
+      active.result.lines.map((l) => l.text),
       { rate: settings.speechRate, voiceURI: settings.voiceURI },
     )
-  }, [result, settings.speechRate, settings.voiceURI, speech])
+  }, [active, settings.speechRate, settings.voiceURI, speech])
 
   const previewVoice = useCallback(() => {
     speech.speak(['This is how ClearSign will read signs to you.'], { rate: settings.speechRate, voiceURI: settings.voiceURI })
   }, [settings.speechRate, settings.voiceURI, speech])
 
-  const busy = status === 'recognizing'
+  const busy = captures.latest?.status === 'recognizing'
 
   return (
     <div className="app" data-view={view}>
@@ -94,7 +93,12 @@ export default function App() {
         Skip to main content
       </a>
 
-      <TopBar view={view} onViewChange={setView} hasResult={status === 'done'} onOpenSettings={() => setSettingsOpen(true)} />
+      <TopBar
+        view={view}
+        onViewChange={setView}
+        hasResult={captures.list.some((c) => c.status === 'done')}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
       <main id="main" className="workspace">
         <Viewfinder
@@ -108,10 +112,12 @@ export default function App() {
         <Reader
           settings={settings}
           onSettingsChange={update}
-          status={status}
-          errorMessage={errorMessage}
-          result={result}
-          imageUrl={imageUrl}
+          captures={captures.list}
+          activeId={captures.activeId}
+          status={active?.status ?? 'idle'}
+          errorMessage={active?.errorMessage ?? null}
+          result={active?.result ?? null}
+          imageUrl={active?.imageUrl ?? null}
           speechSupported={speech.supported}
           speechStatus={speech.status}
           speechPosition={speech.position}
@@ -119,7 +125,9 @@ export default function App() {
           onPause={speech.pause}
           onResume={speech.resume}
           onStop={speech.stop}
-          onRetake={retake}
+          onRetake={captureAnother}
+          onSelectCapture={selectCapture}
+          onCloseCapture={closeCapture}
         />
       </main>
 
