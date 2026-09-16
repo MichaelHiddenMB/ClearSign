@@ -50,6 +50,11 @@ export async function recognizeText(image: Blob, signal?: AbortSignal): Promise<
     throw new OcrError('network', 'The text recognition service could not be reached. Check your connection and try again.')
   }
 
+  if (import.meta.env.DEV && [502, 503, 504].includes(response.status)) {
+    // The dev proxy answers 502 when the FastAPI service is not running.
+    return sampleResult()
+  }
+
   if (!response.ok) {
     throw new OcrError('server', `The text recognition service returned an error (HTTP ${response.status}). Try again in a moment.`)
   }

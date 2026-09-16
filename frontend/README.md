@@ -1,32 +1,49 @@
-# React + TypeScript + Vite
+# ClearSign client
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + TypeScript, built with Vite. No UI framework; styling is plain CSS with design tokens in `src/styles/tokens.css`.
 
-Currently, two official plugins are available:
+## Scripts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Dev server on http://localhost:5173 with `/api` proxied to the FastAPI service |
+| `npm run build` | Typecheck and produce a production bundle in `dist/` |
+| `npm run preview` | Serve the production bundle locally |
+| `npm run lint` | Run oxlint |
 
-## React Compiler
+Copy `.env.example` to `.env` to change the API target or force sample results.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Structure
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+src/
+  App.tsx                 State for capture → recognise → read, wires the panels together
+  components/
+    TopBar.tsx            Wordmark, Camera/Text switch (bottom bar on phones), Display button
+    Viewfinder.tsx        Live camera preview, capture button, photo-library fallback
+    Reader.tsx            Enlarged text surface, size stepper, read-aloud controls, photo zoom
+    SettingsPanel.tsx     Colour themes, typeface, spacing, weight, speech rate and voice
+    Icon.tsx              Inline SVG icon set
+  hooks/
+    useCamera.ts          getUserMedia lifecycle and permission states
+    useSpeech.ts          Web Speech API: line-by-line utterances with word boundaries
+    useSettings.ts        Persisted display settings; syncs app chrome to the reader theme
+  lib/
+    ocr.ts                API client for POST /api/ocr, with a dev-only sample fallback
+    capture.ts            Grabs a JPEG frame from the video element
+    settings.ts           Theme, font, and spacing definitions plus defaults and validation
+  styles/
+    tokens.css            Light and dark chrome palettes, type, control sizes
+    base.css              Reset, focus ring, reduced-motion, skip link
+    app.css               Component styles
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Accessibility notes
+
+- Default reader face is Atkinson Hyperlegible, designed for low-vision readers; Lexend, the system sans, and a serif are also offered.
+- Six reader colour themes, including yellow-on-black and black-on-yellow, with the app chrome switching to match.
+- Every control is at least 48px tall, has a visible text label or an accessible name, and a high-visibility focus ring.
+- Status changes (recognising, results, errors) are announced through live regions.
+- The Camera/Text switch sits at the bottom of the screen on phones so it is within thumb reach.
+- Space captures a frame while the camera is live.
+- Respects `prefers-reduced-motion` and `prefers-contrast: more`.

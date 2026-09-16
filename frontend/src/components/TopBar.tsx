@@ -12,9 +12,9 @@ interface TopBarProps {
 export function TopBar({ view, onViewChange, hasResult, onOpenSettings }: TopBarProps) {
   return (
     <header className="topbar">
-      <a className="wordmark" href="/" aria-label="ClearSign home">
+      <h1 className="wordmark">
         Clear<span>Sign</span>
-      </a>
+      </h1>
 
       <nav className="views" aria-label="Screens">
         <button

@@ -49,10 +49,13 @@ export function Reader(props: ReaderProps) {
     activeLine.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [speechPosition?.line])
 
-  // A fresh capture always opens in the text view.
-  useEffect(() => {
-    if (status === 'recognizing') setMode('text')
-  }, [status])
+  // A fresh capture always opens in the text view at 1x.
+  const [seenImageUrl, setSeenImageUrl] = useState(imageUrl)
+  if (imageUrl !== seenImageUrl) {
+    setSeenImageUrl(imageUrl)
+    setMode('text')
+    setZoom(1)
+  }
 
   const step = (direction: 1 | -1) => {
     const next = Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, settings.fontSize + direction * FONT_SIZE_STEP))

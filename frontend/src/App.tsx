@@ -52,7 +52,7 @@ export default function App() {
     [speech],
   )
 
-  const capture = useCallback(async () => {
+  const capture = async () => {
     const video = camera.videoRef.current
     if (!video) return
     try {
@@ -63,7 +63,7 @@ export default function App() {
       setStatus('error')
       setView('read')
     }
-  }, [camera.videoRef, recognize])
+  }
 
   const retake = useCallback(() => {
     abortRef.current?.abort()
