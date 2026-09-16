@@ -13,17 +13,26 @@ ClearSign is an accessibility web app for people with low vision. Point a phone 
 | Path | Contents |
 | --- | --- |
 | `frontend/` | React + TypeScript client (Vite) |
-| `backend/` | FastAPI + OpenCV + Tesseract service (not yet added) |
+| `backend/` | FastAPI + OpenCV + Tesseract service |
 
-## Running the client
+## Running it
+
+You need Node 20+, Python 3.12, and Tesseract 5 (`brew install tesseract` on macOS, `apt install tesseract-ocr` on Debian/Ubuntu).
 
 ```sh
+# Terminal 1: OCR service on :8000
+cd backend
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/uvicorn app.main:app --reload --port 8000
+
+# Terminal 2: client on :5173
 cd frontend
 npm install
 npm run dev
 ```
 
-The dev server proxies `/api` to `http://localhost:8000`. While the API is not running, the client shows a clearly labelled sample result so the reader can be exercised on its own.
+The client's dev server proxies `/api` to the service. While the service is not running, the client shows a clearly labelled sample result so the reader can be exercised on its own. Each part has its own README with details, and `backend/Dockerfile` builds a container with Tesseract included.
 
 ## API contract
 
@@ -40,8 +49,9 @@ Content-Type: multipart/form-data
     { "text": "PLATFORM 2", "confidence": 96.1 }
   ],
   "dropped_words": 2,
-  "processing_ms": 640
+  "processing_ms": 640,
+  "skew_degrees": -3.2
 }
 ```
 
-`lines` are in reading order, `confidence` is the mean Tesseract word confidence for the line (0–100), and `dropped_words` counts the words the service filtered out for low confidence. Any non-2xx status is shown to the user as a service error.
+`lines` are in reading order, `confidence` is the mean Tesseract word confidence for the line (0–100), `dropped_words` counts the words the service filtered out for low confidence, and `skew_degrees` is the rotation applied to straighten the photo. An unreadable upload returns 400 and an oversized one 413; the client shows any non-2xx status as a service error.
