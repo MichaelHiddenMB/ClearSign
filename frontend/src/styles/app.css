@@ -403,6 +403,7 @@
 .panel__header {
   position: sticky;
   top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -440,6 +441,7 @@
 .panel__footer {
   position: sticky;
   bottom: 0;
+  z-index: 2;
   display: flex;
   justify-content: flex-end;
   padding: 12px 24px;
