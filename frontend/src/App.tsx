@@ -50,11 +50,13 @@ export default function App() {
     }
   }
 
-  // "Capture another" keeps the current text in its tab and returns to the camera.
+  // "Capture another" and "Try again" keep the current text in its tab, open a
+  // blank tab for the next photo, and return to the camera.
   const captureAnother = useCallback(() => {
     speech.stop()
+    captures.addBlank()
     setView('capture')
-  }, [speech])
+  }, [captures, speech])
 
   const selectCapture = useCallback(
     (id: number) => {
@@ -85,7 +87,7 @@ export default function App() {
     speech.speak(['This is how ClearSign will read signs to you.'], { rate: settings.speechRate, voiceURI: settings.voiceURI })
   }, [settings.speechRate, settings.voiceURI, speech])
 
-  const busy = captures.latest?.status === 'recognizing'
+  const busy = captures.list.some((c) => c.status === 'recognizing')
 
   return (
     <div className="app" data-view={view}>

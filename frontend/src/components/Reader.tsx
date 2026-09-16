@@ -8,7 +8,7 @@ import { panelId, tabId } from '../lib/captureIds'
 import { CaptureTabs } from './CaptureTabs'
 import { Icon } from './Icon'
 
-export type RecognitionStatus = 'idle' | 'recognizing' | 'done' | 'error'
+export type RecognitionStatus = 'idle' | 'empty' | 'recognizing' | 'done' | 'error'
 
 interface ReaderProps {
   settings: Settings
@@ -214,6 +214,16 @@ export function Reader(props: ReaderProps) {
               <p>
                 Point the camera at a sign, menu, or label and press <strong>Capture</strong>. The text will appear here,
                 enlarged and in your chosen colours. Each capture gets its own tab, so earlier signs stay a tap away.
+              </p>
+            </div>
+          )}
+
+          {status === 'empty' && (
+            <div className="surface__empty">
+              <p className="surface__lede">New capture</p>
+              <p>
+                Point the camera at the next sign and press <strong>Capture</strong>. It will appear in this tab; your
+                earlier captures are still in theirs.
               </p>
             </div>
           )}

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import type { OcrResult } from '../lib/ocr'
 
-export type CaptureStatus = 'recognizing' | 'done' | 'error'
+/** `empty` is a blank tab waiting for its photo. */
+export type CaptureStatus = 'empty' | 'recognizing' | 'done' | 'error'
 
 export interface Capture {
   id: number
-  /** Object URL of the captured frame; released when the capture is closed. */
-  imageUrl: string
+  /** Object URL of the captured frame; null for a blank tab, released when the capture is closed. */
+  imageUrl: string | null
   status: CaptureStatus
   result: OcrResult | null
   errorMessage: string | null
@@ -23,6 +24,7 @@ interface State {
 
 type Action =
   | { type: 'add'; capture: Capture }
+  | { type: 'blank'; capture: Capture }
   | { type: 'update'; id: number; patch: Partial<Capture> }
   | { type: 'remove'; id: number }
   | { type: 'select'; id: number }
@@ -30,6 +32,18 @@ type Action =
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'add': {
+      // A blank tab is waiting for this photo: fill it rather than open another.
+      const blank = state.list.find((c) => c.status === 'empty')
+      if (blank) {
+        const filled = { ...action.capture, id: blank.id, takenAt: Date.now() }
+        return { list: state.list.map((c) => (c.id === blank.id ? filled : c)), activeId: blank.id }
+      }
+      const list = [...state.list, action.capture].slice(-MAX_CAPTURES)
+      return { list, activeId: action.capture.id }
+    }
+    case 'blank': {
+      const existing = state.list.find((c) => c.status === 'empty')
+      if (existing) return { ...state, activeId: existing.id }
       const list = [...state.list, action.capture].slice(-MAX_CAPTURES)
       return { list, activeId: action.capture.id }
     }
@@ -61,19 +75,30 @@ export function useCaptures() {
   // Release object URLs once their capture has left the list (or on unmount).
   const urls = useRef(new Set<string>())
   useEffect(() => {
-    const live = new Set(state.list.map((c) => c.imageUrl))
+    const live = new Set(state.list.flatMap((c) => (c.imageUrl ? [c.imageUrl] : [])))
     for (const url of urls.current) if (!live.has(url)) URL.revokeObjectURL(url)
     urls.current = live
   }, [state.list])
   useEffect(() => () => { for (const url of urls.current) URL.revokeObjectURL(url) }, [])
 
+  const blankId = state.list.find((c) => c.status === 'empty')?.id ?? null
+
+  /** Starts a capture in the blank tab if there is one, otherwise in a new tab. Returns the tab id. */
   const add = useCallback((image: Blob): number => {
-    const id = nextId++
+    const id = blankId ?? nextId++
     dispatch({
       type: 'add',
       capture: { id, imageUrl: URL.createObjectURL(image), status: 'recognizing', result: null, errorMessage: null, takenAt: Date.now() },
     })
     return id
+  }, [blankId])
+
+  /** Opens (or re-selects) a blank tab ready for the next photo. */
+  const addBlank = useCallback(() => {
+    dispatch({
+      type: 'blank',
+      capture: { id: nextId++, imageUrl: null, status: 'empty', result: null, errorMessage: null, takenAt: Date.now() },
+    })
   }, [])
 
   const update = useCallback((id: number, patch: Partial<Capture>) => dispatch({ type: 'update', id, patch }), [])
@@ -83,5 +108,5 @@ export function useCaptures() {
   const active = state.list.find((c) => c.id === state.activeId) ?? null
   const latest = state.list[state.list.length - 1] ?? null
 
-  return { list: state.list, activeId: state.activeId, active, latest, add, update, remove, select }
+  return { list: state.list, activeId: state.activeId, active, latest, add, addBlank, update, remove, select }
 }

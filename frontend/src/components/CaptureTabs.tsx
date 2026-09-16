@@ -100,6 +100,7 @@ export function CaptureTabs({ captures, activeId, onSelect, onClose }: CaptureTa
 }
 
 function labelFor(capture: Capture): string {
+  if (capture.status === 'empty') return 'New'
   if (capture.status === 'recognizing') return 'Reading…'
   const first = capture.result?.lines[0]?.text
   if (capture.status === 'error' || !first) return 'No text'
