@@ -1,6 +1,5 @@
 export type IconName =
   | 'camera'
-  | 'upload'
   | 'settings'
   | 'play'
   | 'pause'
@@ -17,7 +16,6 @@ export type IconName =
 
 const PATHS: Record<IconName, string> = {
   camera: 'M4 8h3l2-3h6l2 3h3v11H4z M12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
-  upload: 'M12 16V4 M7 9l5-5 5 5 M4 20h16',
   settings: 'M4 7h16 M4 12h16 M4 17h16 M9 5v4 M15 10v4 M7 15v4',
   play: 'M7 4l13 8-13 8z',
   pause: 'M6 4h4v16H6z M14 4h4v16h-4z',

@@ -20,17 +20,20 @@ src/
   App.tsx                 State for capture → recognise → read, wires the panels together
   components/
     TopBar.tsx            Wordmark, Camera/Text switch (bottom bar on phones), Display button
-    Viewfinder.tsx        Live camera preview, capture button, photo-library fallback
+    Viewfinder.tsx        Live camera preview and capture button
     Reader.tsx            Enlarged text surface, size stepper, read-aloud controls, photo zoom
+    CaptureTabs.tsx       Tab strip of captures (ARIA tabs pattern, Delete closes)
     SettingsPanel.tsx     Colour themes, typeface, spacing, weight, speech rate and voice
     Icon.tsx              Inline SVG icon set
   hooks/
+    useCaptures.ts        The session's captures, one tab each, including blank tabs awaiting a photo
     useCamera.ts          getUserMedia lifecycle and permission states
     useSpeech.ts          Web Speech API: line-by-line utterances with word boundaries
     useSettings.ts        Persisted display settings; syncs app chrome to the reader theme
   lib/
     ocr.ts                API client for POST /api/ocr, with a dev-only sample fallback
     capture.ts            Grabs a JPEG frame from the video element
+    captureIds.ts         Element ids tying each capture tab to its panel
     settings.ts           Theme, font, and spacing definitions plus defaults and validation
   styles/
     tokens.css            Light and dark chrome palettes, type, control sizes

@@ -18,6 +18,13 @@ import cv2
 import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+try:  # iPhone photos arrive as HEIC when the browser does not convert them.
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+except ImportError:  # pragma: no cover - optional dependency
+    pass
+
 
 class ImageDecodeError(ValueError):
     """The upload could not be decoded as an image."""
@@ -30,7 +37,8 @@ class PreprocessOptions:
     target_text_height: float = 50.0
     min_scale: float = 0.25
     max_scale: float = 4.0
-    max_long_side: int = 4000
+    # Bounds the read-pass image; Tesseract time grows with area.
+    max_long_side: int = 2600
     # bilateral | nlmeans | median | gaussian | none
     denoise: str = "bilateral"
     # Local contrast equalisation for shadows and uneven lighting.

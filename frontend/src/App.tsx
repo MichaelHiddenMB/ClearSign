@@ -109,7 +109,6 @@ export default function App() {
           busy={busy}
           onStart={camera.start}
           onCapture={capture}
-          onFile={recognize}
         />
         <Reader
           settings={settings}

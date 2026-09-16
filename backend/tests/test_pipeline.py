@@ -156,3 +156,37 @@ def test_cluster_lines_uses_the_level_frame_of_a_corrected_candidate():
             words.append(placed(text, 90, i * 220, y, 150, 40, line=row + 1))
     map_boxes(words, rotation)
     assert [l.text for l in cluster_lines(words, skew_degrees=0.0)] == ["Bus 42 to Airport", "Bus 42 to Airport"]
+
+
+def test_pipeline_reads_a_photo_stored_sideways():
+    import cv2
+
+    bgr = decode_image(scene_with_sign(["Platform 2", "Trains to Downtown"], size=72))
+    sideways = cv2.rotate(bgr, cv2.ROTATE_90_CLOCKWISE)
+    result = run(sideways, DEFAULT_PIPELINE)
+    texts = [l.text.upper() for l in result.recognition.lines]
+    assert result.detection is not None and result.detection.rotation in (90, 270)
+    assert "PLATFORM 2" in texts and "TRAINS TO DOWNTOWN" in texts
+
+
+def test_pipeline_handles_phone_resolution_scene():
+    import cv2
+
+    bgr = decode_image(scene_with_sign(["Ticket office", "Closed"], size=64))
+    factor = 4000 / max(bgr.shape[:2])
+    big = cv2.resize(bgr, None, fx=factor, fy=factor, interpolation=cv2.INTER_CUBIC)
+    result = run(big, DEFAULT_PIPELINE)
+    texts = [l.text.upper() for l in result.recognition.lines]
+    assert "TICKET OFFICE" in texts and "CLOSED" in texts
+
+
+def test_decode_image_accepts_heic():
+    pillow_heif = pytest.importorskip("pillow_heif")
+    sign = Image.open(io.BytesIO(render_sign(["EXIT"]))).convert("RGB")
+    buffer = io.BytesIO()
+    try:
+        pillow_heif.from_pillow(sign).save(buffer, format="HEIF", quality=90)
+    except Exception as err:  # encoder not available in this build
+        pytest.skip(f"HEIF encoder unavailable: {err}")
+    bgr = decode_image(buffer.getvalue())
+    assert bgr.shape[:2] == (sign.height, sign.width)

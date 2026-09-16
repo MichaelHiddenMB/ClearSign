@@ -61,9 +61,11 @@ class OcrOptions:
     # `guard_fraction` as many confident words as the most productive one).
     select: str = "guarded"
     guard_fraction: float = 0.5
-    # Stop trying further candidates once one scores at least this well
-    # (mean word confidence); 101 disables early exit.
+    # Stop trying further candidates once one has read at least
+    # early_exit_min_words confident words averaging this confidence;
+    # 101 disables early exit.
     early_exit_confidence: float = 90.0
+    early_exit_min_words: int = 3
 
 
 DEFAULT_OCR_OPTIONS = OcrOptions()
@@ -272,8 +274,9 @@ def recognize(
             words = run_tesseract(candidate.image, psm, options)
             map_boxes(words, candidate.transform)
             results.append((f"{candidate.label}/psm{psm}", words))
-            real_words = [w for w in words if w.alphanumeric]
-            if real_words and float(np.mean([w.confidence for w in real_words])) >= options.early_exit_confidence:
+            confident = [w for w in words if w.alphanumeric and w.confidence >= options.min_confidence]
+            if (len(confident) >= options.early_exit_min_words
+                    and float(np.mean([w.confidence for w in confident])) >= options.early_exit_confidence):
                 return build(results, options)
 
     if candidates:

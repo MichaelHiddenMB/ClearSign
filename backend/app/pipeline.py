@@ -47,6 +47,23 @@ class PipelineOptions:
     # Words this confident (and at least two characters) define the region,
     # text height, skew and polarity; junk from textures rarely qualifies.
     reliable_confidence: float = 70.0
+    # The region is seeded from words this confident (three or more
+    # characters) and grown only to reliable words next to it, so junk read
+    # in grass or brickwork cannot stretch it across the photo.
+    seed_confidence: float = 88.0
+    # When pass 1 finds fewer than this many reliable words, retry it at
+    # detect_retry_long_side (phone photos are 4000 px; small text vanishes
+    # at 1600) and then at 90/180/270 degrees for photos stored sideways.
+    rescue_min_words: int = 3
+    detect_retry_long_side: int = 2600
+    # Other orientations are tried only when nothing reliable reads upright;
+    # a one-word sign must not pay for three extra detection passes.
+    orientation_rescue: bool = True
+    orientation_rescue_max_words: int = 0
+    # A binarised crop with more connected components than this is texture
+    # (grass, brick, foliage); Tesseract would spend seconds on it, so only
+    # the grayscale candidate is read.
+    max_binary_components: int = 3000
     # Estimate skew from the detected word baselines instead of ink blobs.
     skew_from_words: bool = True
     # words | blobs | agree: which estimate levels the crop. "agree" averages
@@ -77,6 +94,10 @@ class Detection:
     """Light text on dark background, judged inside the detected words."""
     small_text_height: float | None = None
     """20th percentile of reliable word heights, for a second read of small print."""
+    reliable_count: int = 0
+    """How many words met the reliability bar; low counts trigger the rescues."""
+    rotation: int = 0
+    """Degrees the photo was rotated (0, 90, 180, 270) before reading."""
 
 
 @dataclass
@@ -87,8 +108,30 @@ class PipelineResult:
 
 
 def detect_text(gray: np.ndarray, options: PipelineOptions) -> Detection:
+    """Pass 1 with rescues: a larger detection image, then other orientations."""
+    detection = _detect_at(gray, options, options.detect_long_side)
     height, width = gray.shape[:2]
-    scale = min(1.0, options.detect_long_side / max(height, width))
+    if (detection.reliable_count < options.rescue_min_words
+            and options.detect_retry_long_side > options.detect_long_side
+            and max(height, width) > options.detect_long_side * 1.25):
+        bigger = _detect_at(gray, options, options.detect_retry_long_side)
+        if bigger.reliable_count > detection.reliable_count:
+            detection = bigger
+    if detection.reliable_count <= options.orientation_rescue_max_words and options.orientation_rescue:
+        # Adopt another orientation only on clear evidence: a sideways photo
+        # reads nothing upright and several words when turned, while junk
+        # from texture rarely produces three reliable words in any direction.
+        for rotation, code in ((90, cv2.ROTATE_90_CLOCKWISE), (270, cv2.ROTATE_90_COUNTERCLOCKWISE), (180, cv2.ROTATE_180)):
+            turned = _detect_at(cv2.rotate(gray, code), options, options.detect_long_side)
+            if turned.reliable_count >= options.rescue_min_words and turned.reliable_count > 2 * detection.reliable_count:
+                turned.rotation = rotation
+                detection = turned
+    return detection
+
+
+def _detect_at(gray: np.ndarray, options: PipelineOptions, long_side: int) -> Detection:
+    height, width = gray.shape[:2]
+    scale = min(1.0, long_side / max(height, width))
     small = _resize(gray, scale) if scale < 1.0 else gray
     small = denoise(small, "gaussian")
     words = run_tesseract(small, options.detect_psm, options.ocr)
@@ -99,22 +142,50 @@ def detect_text(gray: np.ndarray, options: PipelineOptions) -> Detection:
 
     # Prefer clearly-read words for every geometric decision; fall back to
     # everything only when the sign is barely legible at detection size.
-    reliable = [w for w in good if w.confidence >= options.reliable_confidence and sum(ch.isalnum() for ch in w.text) >= 2]
+    reliable = [w for w in good if w.confidence >= options.reliable_confidence and w.alnum_length >= 2]
     basis = reliable if len(reliable) >= 2 else good
+    region_words = _grow_region(basis, options)
 
-    heights = np.array([w.height for w in basis], dtype=np.float32) / scale
+    heights = np.array([w.height for w in region_words], dtype=np.float32) / scale
     text_height = float(np.percentile(heights, options.height_percentile))
     small_text_height = float(np.percentile(heights, 20))
     margin = int(options.margin_factor * text_height)
-    x0 = max(0, int(min(w.left for w in basis) / scale) - margin)
-    y0 = max(0, int(min(w.top for w in basis) / scale) - margin)
-    x1 = min(width, int(max(w.left + w.width for w in basis) / scale) + margin)
-    y1 = min(height, int(max(w.top + w.height for w in basis) / scale) + margin)
+    x0 = max(0, int(min(w.left for w in region_words) / scale) - margin)
+    y0 = max(0, int(min(w.top for w in region_words) / scale) - margin)
+    x1 = min(width, int(max(w.left + w.width for w in region_words) / scale) + margin)
+    y1 = min(height, int(max(w.top + w.height for w in region_words) / scale) + margin)
 
-    skew = skew_from_words(basis) if options.skew_from_words else None
-    inverted = polarity_from_words(small, basis) if options.polarity_from_words else None
+    skew = skew_from_words(region_words) if options.skew_from_words else None
+    inverted = polarity_from_words(small, region_words) if options.polarity_from_words else None
     return Detection(words=words, region=(x0, y0, x1, y1), text_height=text_height, scale=scale,
-                     skew_degrees=skew, inverted=inverted, small_text_height=small_text_height)
+                     skew_degrees=skew, inverted=inverted, small_text_height=small_text_height,
+                     reliable_count=len(reliable))
+
+
+def _grow_region(basis: list[Word], options: PipelineOptions) -> list[Word]:
+    """Seeds the region with the surest words and grows it to reliable neighbours."""
+    seeds = [w for w in basis if w.confidence >= options.seed_confidence and w.alnum_length >= 3]
+    if len(seeds) < 2:
+        return basis
+    chosen = list(seeds)
+    seed_height = float(np.median([w.height for w in seeds]))
+    # Only words of a plausible size may join: texture reads as tiny or odd-sized words.
+    remaining = [w for w in basis if w not in chosen and 0.25 * seed_height <= w.height <= 4.0 * seed_height]
+    for _ in range(3):
+        if not remaining:
+            break
+        reach = 2.0 * float(np.median([w.height for w in chosen]))
+        x0 = min(w.left for w in chosen) - reach
+        y0 = min(w.top for w in chosen) - reach
+        x1 = max(w.left + w.width for w in chosen) + reach
+        y1 = max(w.top + w.height for w in chosen) + reach
+        near = [w for w in remaining
+                if w.left + w.width >= x0 and w.left <= x1 and w.top + w.height >= y0 and w.top <= y1]
+        if not near:
+            break
+        chosen.extend(near)
+        remaining = [w for w in remaining if w not in near]
+    return chosen
 
 
 def skew_from_words(words: list[Word]) -> float | None:
@@ -199,6 +270,11 @@ def run(bgr: np.ndarray, options: PipelineOptions = DEFAULT_PIPELINE) -> Pipelin
     inverted: bool | None = None
     if options.detect:
         detection = detect_text(gray, options)
+        if detection.rotation:
+            # The photo was stored sideways; work in the orientation that read.
+            code = {90: cv2.ROTATE_90_CLOCKWISE, 180: cv2.ROTATE_180, 270: cv2.ROTATE_90_COUNTERCLOCKWISE}[detection.rotation]
+            gray = cv2.rotate(gray, code)
+            crop = gray
         if detection.region:
             x0, y0, x1, y1 = detection.region
             crop = gray[y0:y1, x0:x1]
@@ -268,6 +344,10 @@ def run(bgr: np.ndarray, options: PipelineOptions = DEFAULT_PIPELINE) -> Pipelin
 def _candidates(prepared: Preprocessed, options: PipelineOptions, label: str = "",
                 offset: tuple[int, int] = (0, 0)) -> list[Candidate]:
     images = {"gray": prepared.gray, "binary": prepared.binary}
+    if "binary" in images and options.max_binary_components:
+        components, _ = cv2.connectedComponents(cv2.bitwise_not(prepared.binary), connectivity=8)
+        if components > options.max_binary_components:
+            del images["binary"]
     shift = np.array([[1, 0, offset[0]], [0, 1, offset[1]], [0, 0, 1]], dtype=np.float64)
     transform = shift @ prepared.transform
     candidates = [Candidate(f"{label}{name}", images[name], transform) for name in options.inputs if name in images]

@@ -133,6 +133,21 @@ VARIANTS: dict[str, dict] = {
     "skew-words": {"pipeline.skew_source": "words"},
     "skew-blobs": {"pipeline.skew_source": "blobs"},
     "skew-agree": {"pipeline.skew_source": "agree"},
+    "no-seed": {"pipeline.seed_confidence": 200},
+    "seed80": {"pipeline.seed_confidence": 80},
+    "seed92": {"pipeline.seed_confidence": 92},
+    "no-rescue": {"pipeline.rescue_min_words": 0, "pipeline.orientation_rescue": False},
+    "no-orient": {"pipeline.orientation_rescue": False},
+    "no-retry": {"pipeline.detect_retry_long_side": 0},
+    "rescue3": {"pipeline.rescue_min_words": 3},
+    "no-component-guard": {"pipeline.max_binary_components": 0},
+    "components3000": {"pipeline.max_binary_components": 3000},
+    "components10000": {"pipeline.max_binary_components": 10000},
+    "early85": {"ocr.early_exit_confidence": 85},
+    "early95": {"ocr.early_exit_confidence": 95},
+    "early-off": {"ocr.early_exit_confidence": 101},
+    "max4000": {"preprocess.max_long_side": 4000},
+    "max2600": {"preprocess.max_long_side": 2600},
 }
 
 
@@ -201,10 +216,15 @@ def _init_worker():
     os.environ["OMP_THREAD_LIMIT"] = "1"
 
 
-def evaluate_one(args: tuple[dict, dict]) -> dict:
-    sample, overrides = args
+def evaluate_one(args: tuple[dict, dict, int]) -> dict:
+    sample, overrides, upscale = args
     options = build_options(overrides)
     bgr = decode_image(Path(sample["path"]).read_bytes())
+    if upscale:
+        import cv2
+
+        factor = upscale / max(bgr.shape[:2])
+        bgr = cv2.resize(bgr, None, fx=factor, fy=factor, interpolation=cv2.INTER_CUBIC if factor > 1 else cv2.INTER_AREA)
     started = time.perf_counter()
     try:
         result = run(bgr, options)
@@ -258,6 +278,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     parser.add_argument("--out", default=str(CACHE / "results.json"))
     parser.add_argument("--show-misses", type=int, default=0, help="print the N worst samples per variant")
+    parser.add_argument("--upscale", type=int, default=0, help="resize every image so its long side is this many px (simulates phone uploads)")
     args = parser.parse_args(argv)
 
     samples = load_dataset(args.n, args.seed, args.real)
@@ -272,7 +293,7 @@ def main(argv: list[str] | None = None) -> None:
     for name in variants:
         overrides = {**common, **VARIANTS[name]}
         with ProcessPoolExecutor(max_workers=args.jobs, initializer=_init_worker) as pool:
-            rows = list(pool.map(evaluate_one, [(s, overrides) for s in samples], chunksize=2))
+            rows = list(pool.map(evaluate_one, [(s, overrides, args.upscale) for s in samples], chunksize=2))
         overall = summarise(rows)
         by_tag = defaultdict(list)
         for r in rows:

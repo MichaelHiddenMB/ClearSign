@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ChangeEvent, type RefObject } from 'react'
+import { useEffect, type RefObject } from 'react'
 import type { CameraState } from '../hooks/useCamera'
 import { Icon } from './Icon'
 
@@ -8,7 +8,6 @@ interface ViewfinderProps {
   busy: boolean
   onStart: () => void
   onCapture: () => void
-  onFile: (file: File) => void
 }
 
 const CAMERA_MESSAGES: Partial<Record<CameraState, { title: string; body: string }>> = {
@@ -18,20 +17,19 @@ const CAMERA_MESSAGES: Partial<Record<CameraState, { title: string; body: string
   },
   denied: {
     title: 'Camera access was blocked',
-    body: 'Allow camera access in your browser settings, or choose a photo from your library instead.',
+    body: 'Allow camera access for this site in your browser settings, then try again.',
   },
   unavailable: {
     title: 'No camera found',
-    body: 'This device has no usable camera. You can still choose a photo from your library.',
+    body: 'ClearSign needs a camera to read signs. Open it on a phone or a device with a camera.',
   },
   error: {
     title: 'The camera could not start',
-    body: 'Close other apps that may be using the camera and try again, or choose a photo.',
+    body: 'Close other apps that may be using the camera, then try again.',
   },
 }
 
-export function Viewfinder({ videoRef, cameraState, busy, onStart, onCapture, onFile }: ViewfinderProps) {
-  const fileInput = useRef<HTMLInputElement>(null)
+export function Viewfinder({ videoRef, cameraState, busy, onStart, onCapture }: ViewfinderProps) {
   const live = cameraState === 'live'
   const message = CAMERA_MESSAGES[cameraState]
 
@@ -47,12 +45,6 @@ export function Viewfinder({ videoRef, cameraState, busy, onStart, onCapture, on
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [live, busy, onCapture])
-
-  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) onFile(file)
-    e.target.value = ''
-  }
 
   return (
     <section className="viewfinder" aria-labelledby="viewfinder-heading">
@@ -97,22 +89,6 @@ export function Viewfinder({ videoRef, cameraState, busy, onStart, onCapture, on
             <span>{cameraState === 'denied' || cameraState === 'error' ? 'Try camera again' : 'Turn on camera'}</span>
           </button>
         )}
-
-        <button type="button" className="btn" onClick={() => fileInput.current?.click()} disabled={busy}>
-          <Icon name="upload" />
-          <span>Choose a photo</span>
-        </button>
-        <input
-          ref={fileInput}
-          id="photo-file"
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="visually-hidden"
-          onChange={handleFile}
-          tabIndex={-1}
-          aria-hidden="true"
-        />
       </div>
 
       {live && (

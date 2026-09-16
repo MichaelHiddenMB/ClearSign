@@ -32,7 +32,7 @@ The tests render synthetic signs with Pillow (straight, tilted, light-on-dark, i
 
 Recognition runs in two passes so that a sign photographed in a cluttered scene is read the way a scan would be.
 
-**Pass 1, detect.** The grayscale photo is bounded to 1600 px and Tesseract runs in sparse-text mode over the whole thing. Even when it misreads, the boxes of its confident words say where the text is, how tall it is, whether the ink is lighter than its background, and how the baselines are tilted. Only clearly-read words (confidence 70 or more, two or more characters) inform these decisions, so texture in brick walls and foliage does not set the scale.
+**Pass 1, detect.** The grayscale photo is bounded to 1600 px and Tesseract runs in sparse-text mode over the whole thing. Even when it misreads, the boxes of its confident words say where the text is, how tall it is, whether the ink is lighter than its background, and how the baselines are tilted. The region is seeded from the surest words (confidence 88 or more, three or more characters) and grown only to reliable neighbours of a plausible size, so junk read in grass or brickwork cannot stretch it across the photo. If fewer than three reliable words turn up, the pass is retried at 2600 px (phone photos are 4000 px wide and small print vanishes at 1600), and if nothing reliable reads at all it is retried at 90, 180 and 270 degrees for photos stored sideways.
 
 **Pass 2, read.** The region around those words is cropped from the full-resolution photo and prepared with OpenCV:
 
@@ -43,7 +43,7 @@ Recognition runs in two passes so that a sign photographed in a cluttered scene 
 5. **Adaptive Gaussian threshold** (61 px window) for the binarised candidate; the cleaned grayscale is kept as a second candidate because Tesseract's own thresholding often does better on clean signs.
 6. **Deskew** by the pass-1 baseline angle (blob-fitting as a fallback), then threshold again.
 
-Tesseract reads the grayscale and binary candidates in block mode; if fewer than three confident words come back it also tries column mode and sparse mode, and the opposite polarity when the read is weak. Every candidate's words are mapped back to photo coordinates through the exact inverse of the geometry applied to them.
+Tesseract reads the grayscale and binary candidates in block mode; if fewer than three confident words come back it also tries column mode and sparse mode, and the opposite polarity when the read is weak. A binarised crop with more than 3,000 connected components is texture rather than text and is skipped, which is what keeps foliage and stone walls from costing ten seconds. Every candidate's words are mapped back to photo coordinates through the exact inverse of the geometry applied to them.
 
 **Merge.** Rather than crowning one candidate, confident words from all candidates (including pass 1) are merged geometrically: words are accepted in order of confidence and a word whose box overlaps an accepted one is dropped, so misreads of the same word lose to better reads and a line one candidate missed is filled in from another. Signs that mix a large title with small print depend on this. Accepted words are clustered into lines in the level frame of the candidate that contributed most of them, which keeps rows intact under tilt and keystone distortion.
 
@@ -61,10 +61,16 @@ Tesseract reads the grayscale and binary candidates in block mode; if fewer than
 | 150 synthetic (seed 2, held out) | current | **0.109** | **0.908** | **0.835** | **77%** |
 | 120 synthetic (seed 1, tuning set) | first version | 0.204 | 0.801 | 0.724 | 63% |
 | 120 synthetic (seed 1, tuning set) | current | **0.064** | **0.929** | **0.875** | **80%** |
+| 19 real photos resized to 3000 px | first version | 0.813 | 0.272 | 0.127 | 0% |
+| 19 real photos resized to 3000 px | current | **0.243** | **0.658** | **0.464** | **11%** |
 
 A CER above 1 means the output was mostly junk. The first version's real-photo output was largely punctuation and fragments; the current pipeline reads twelve of the nineteen photos with a CER of 0.35 or better. The hardest remaining cases are cast-metal relief lettering, a dot-matrix departure board, hand-painted wood, and leaves occluding letters.
 
-Median processing time is about 0.35 s for synthetic images and 1.2 s for 1600 px real photos on an Apple M-series laptop, against 0.19 s and 0.8 s for the first version.
+Median processing time is about 0.35 s for synthetic images, 1.2 s for 1600 px real photos and 1.3 s for 3000 px photos on an Apple M-series laptop, against 0.19 s and 0.8 s for the first version. The slowest photo (a low-contrast carved sign in tall grass) takes about 5 s at 3000 px.
+
+### Full-resolution photos
+
+The ClearSign client sends 1920 px camera frames, but the API accepts any image, and a photo straight from a phone's library is 12 megapixels, often stored sideways with an orientation tag, and sometimes HEIC. The first version of the pipeline scored a CER of 0.81 on such inputs. Now the detection pass retries at higher resolution and at other orientations when little reads, a texture guard keeps cluttered backgrounds from costing seconds, and `pillow-heif` decodes HEIC. Use `--upscale 3000` (or 4000) with the benchmark to reproduce that case.
 
 What the benchmark showed, in order of impact:
 
@@ -75,7 +81,7 @@ What the benchmark showed, in order of impact:
 5. The geometric merge of candidates, especially on signs with mixed text sizes.
 6. Glyph height 50 px rather than 40, unsharp masking, a confidence threshold of 70, and the short-word rule.
 
-Things that did not help and were left out: CLAHE, non-local-means or median denoising, smaller threshold windows, adding a white border, a blurred candidate for dot-matrix displays, a 1200 px detection pass, and a second read scaled for small print.
+Things that did not help and were left out: CLAHE, non-local-means or median denoising, smaller threshold windows, adding a white border, a blurred candidate for dot-matrix displays, a 1200 px detection pass, a second read scaled for small print, and a 4000 px read-pass bound (2600 px is as accurate and faster).
 
 ### Running the benchmark
 
