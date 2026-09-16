@@ -1,122 +1,137 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Reader, type RecognitionStatus } from './components/Reader'
+import { SettingsPanel } from './components/SettingsPanel'
+import { TopBar, type View } from './components/TopBar'
+import { Viewfinder } from './components/Viewfinder'
+import { useCamera } from './hooks/useCamera'
+import { useSettings } from './hooks/useSettings'
+import { useSpeech } from './hooks/useSpeech'
+import { grabFrame } from './lib/capture'
+import { OcrError, recognizeText, type OcrResult } from './lib/ocr'
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const { settings, update } = useSettings()
+  const camera = useCamera()
+  const speech = useSpeech()
+
+  const [view, setView] = useState<View>('capture')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [status, setStatus] = useState<RecognitionStatus>('idle')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [result, setResult] = useState<OcrResult | null>(null)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  // Release the previous object URL whenever a new frame replaces it.
+  useEffect(() => () => { if (imageUrl) URL.revokeObjectURL(imageUrl) }, [imageUrl])
+
+  const recognize = useCallback(
+    async (image: Blob) => {
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+
+      speech.stop()
+      setImageUrl(URL.createObjectURL(image))
+      setResult(null)
+      setErrorMessage(null)
+      setStatus('recognizing')
+      setView('read')
+
+      try {
+        const next = await recognizeText(image, controller.signal)
+        if (controller.signal.aborted) return
+        setResult(next)
+        setStatus('done')
+      } catch (err) {
+        if (controller.signal.aborted) return
+        setErrorMessage(err instanceof OcrError ? err.message : 'Something went wrong while reading the image. Try again.')
+        setStatus('error')
+      }
+    },
+    [speech],
+  )
+
+  const capture = useCallback(async () => {
+    const video = camera.videoRef.current
+    if (!video) return
+    try {
+      const frame = await grabFrame(video)
+      await recognize(frame)
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Could not capture a frame.')
+      setStatus('error')
+      setView('read')
+    }
+  }, [camera.videoRef, recognize])
+
+  const retake = useCallback(() => {
+    abortRef.current?.abort()
+    speech.stop()
+    setStatus('idle')
+    setResult(null)
+    setErrorMessage(null)
+    setView('capture')
+  }, [speech])
+
+  const readAloud = useCallback(() => {
+    if (!result) return
+    speech.speak(
+      result.lines.map((l) => l.text),
+      { rate: settings.speechRate, voiceURI: settings.voiceURI },
+    )
+  }, [result, settings.speechRate, settings.voiceURI, speech])
+
+  const previewVoice = useCallback(() => {
+    speech.speak(['This is how ClearSign will read signs to you.'], { rate: settings.speechRate, voiceURI: settings.voiceURI })
+  }, [settings.speechRate, settings.voiceURI, speech])
+
+  const busy = status === 'recognizing'
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app" data-view={view}>
+      <a className="skip-link" href="#main">
+        Skip to main content
+      </a>
 
-      <div className="ticks"></div>
+      <TopBar view={view} onViewChange={setView} hasResult={status === 'done'} onOpenSettings={() => setSettingsOpen(true)} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <main id="main" className="workspace">
+        <Viewfinder
+          videoRef={camera.videoRef}
+          cameraState={camera.state}
+          busy={busy}
+          onStart={camera.start}
+          onCapture={capture}
+          onFile={recognize}
+        />
+        <Reader
+          settings={settings}
+          onSettingsChange={update}
+          status={status}
+          errorMessage={errorMessage}
+          result={result}
+          imageUrl={imageUrl}
+          speechSupported={speech.supported}
+          speechStatus={speech.status}
+          speechPosition={speech.position}
+          onSpeak={readAloud}
+          onPause={speech.pause}
+          onResume={speech.resume}
+          onStop={speech.stop}
+          onRetake={retake}
+        />
+      </main>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        settings={settings}
+        onChange={update}
+        voices={speech.voices}
+        speechSupported={speech.supported}
+        onPreviewVoice={previewVoice}
+      />
+    </div>
   )
 }
-
-export default App

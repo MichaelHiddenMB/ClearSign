@@ -1,0 +1,45 @@
+:root {
+  color-scheme: light;
+  --ink: #15181c;
+  --ink-2: #4e5760;
+  --ground: #ffffff;
+  --ground-2: #eef1f4;
+  --ground-3: #dfe4e9;
+  --line: #c3cad2;
+  --line-strong: #15181c;
+  --accent: #1a47b8;
+  --accent-ink: #ffffff;
+  --warn-bg: #fff3c4;
+  --warn-ink: #5c4300;
+  --focus: #1a47b8;
+  --focus-halo: #ffffff;
+
+  --font-ui: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --radius: 6px;
+  --control: 56px;
+  --gutter: 16px;
+}
+
+:root[data-chrome='dark'] {
+  color-scheme: dark;
+  --ink: #f2f4f6;
+  --ink-2: #b1bac4;
+  --ground: #0e1114;
+  --ground-2: #1a1f24;
+  --ground-3: #272e35;
+  --line: #3b444d;
+  --line-strong: #f2f4f6;
+  --accent: #8fb5ff;
+  --accent-ink: #0e1114;
+  --warn-bg: #4a3a00;
+  --warn-ink: #ffe9a3;
+  --focus: #ffd54f;
+  --focus-halo: #0e1114;
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --line: var(--line-strong);
+    --ink-2: var(--ink);
+  }
+}
